@@ -144,7 +144,35 @@ def NFoldConv(P, n):
     Returns:
     - Q: 2d numpy array: [[values], [probabilities]].
     """
+    # Extract values and probabilities
+    values = P[0]
+    probs = P[1]
     
+    # Current distribution Q starts as P
+    # We'll represent it as a dictionary {value: prob} for easy merging
+    current_dist = {val: prob for val, prob in zip(values, probs)}
+    
+    for _ in range(n - 1):
+        new_dist = {}
+        # Convolve current_dist with P
+        for val_q, prob_q in current_dist.items():
+            for val_p, prob_p in zip(values, probs):
+                new_val = val_q + val_p
+                new_prob = prob_q * prob_p
+                
+                if new_val in new_dist:
+                    new_dist[new_val] += new_prob
+                else:
+                    new_dist[new_val] = new_prob
+        current_dist = new_dist
+    
+    # Convert back to 2D numpy array [[values], [probabilities]]
+    # Sort by values for cleaner output
+    sorted_items = sorted(current_dist.items())
+    Q_values = [item[0] for item in sorted_items]
+    Q_probs = [item[1] for item in sorted_items]
+    
+    Q = np.array([Q_values, Q_probs])
     return Q
     
 def plot_dist(P):
@@ -154,8 +182,16 @@ def plot_dist(P):
     Input:
     - P: 2d numpy array: [[values], [probabilities]].
     """
+    values = P[0]
+    probs = P[1]
     
-    pass
+    plt.figure(figsize=(10, 6))
+    plt.bar(values, probs, width=0.8, alpha=0.7, edgecolor='black')
+    plt.xlabel('Values')
+    plt.ylabel('Probability')
+    plt.title('Probability Distribution')
+    plt.grid(axis='y', alpha=0.3)
+    plt.show()
 
 
 ### Qeustion 4 ###
