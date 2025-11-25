@@ -45,15 +45,26 @@ def compare_q1():
 
 
 def same_prob(defective_percent1=0.1, defective_percent2=0.3, target_probability=0.9, min_defective1=5, min_defective2=15):
-    n1 = min_defective1
-    n2 = min_defective2
-    while n1 != n2:
-        n1 = find_sample_size_binom(defective_percent1, target_probability, min_defective1)
-        n2 = find_sample_size_binom(defective_percent2, target_probability, min_defective2)
-    if n1 == n2:
-        return n1
-    else:
-        return None
+    # Start from the maximum of the two minimum defective counts
+    # This ensures both probabilities are > 0
+    n = max(min_defective1, min_defective2)
+    max_iterations = 1000  # Safety limit to avoid infinite loop
+    
+    for _ in range(max_iterations):
+        # Calculate probability for scenario 1: P(X1 >= min_defective1) where X1 ~ Binom(n, p1)
+        prob1 = 1 - stats.binom.cdf(min_defective1 - 1, n, defective_percent1)
+        
+        # Calculate probability for scenario 2: P(X2 >= min_defective2) where X2 ~ Binom(n, p2)
+        prob2 = 1 - stats.binom.cdf(min_defective2 - 1, n, defective_percent2)
+        
+        # Check if probabilities are approximately equal
+        if np.isclose(prob1, prob2, atol=1e-2):
+            return n
+        
+        n += 1
+    
+    # If no solution found within max_iterations
+    return None
 
 ### Question 2 ###
 
@@ -70,15 +81,52 @@ def empirical_centralized_third_moment(n=20, p=[0.2, 0.1, 0.1, 0.1, 0.2, 0.3], k
     return empirical_moment
 
 def class_moment():
-    
+    n = 20
+    p = 0.1 + 0.1 + 0.1  # Sum of probabilities for X2, X3, X4
+    # The centralized third moment for Binomial(n, p) is n * p * (1-p) * (1-2p)
+    moment = n * p * (1 - p) * (1 - 2 * p)
     return moment
 
 def plot_moments():
+    moments = []
+    for _ in range(1000):
+        moments.append(empirical_centralized_third_moment())
     
+    theoretical_val = class_moment()
+    
+    plt.figure(figsize=(10, 6))
+    plt.hist(moments, bins=30, alpha=0.7, label='Empirical Moments')
+    plt.axvline(theoretical_val, color='r', linestyle='dashed', linewidth=2, label='Theoretical Moment')
+    plt.title('Histogram of Empirical Centralized Third Moments')
+    plt.xlabel('Moment Value')
+    plt.ylabel('Frequency')
+    plt.legend()
+    plt.show()
+    
+    dist_var = np.var(moments)
     return dist_var
     
 def plot_moments_smaller_variance():
+    # To reduce variance, we increase the sample size k in the experiment
+    # Default k was 100, let's increase it to 1000
+    k_new = 1000
     
+    moments = []
+    for _ in range(1000):
+        moments.append(empirical_centralized_third_moment(k=k_new))
+        
+    theoretical_val = class_moment()
+    
+    plt.figure(figsize=(10, 6))
+    plt.hist(moments, bins=30, alpha=0.7, color='green', label=f'Empirical Moments (k={k_new})')
+    plt.axvline(theoretical_val, color='r', linestyle='dashed', linewidth=2, label='Theoretical Moment')
+    plt.title(f'Histogram of Empirical Centralized Third Moments (Reduced Variance, k={k_new})')
+    plt.xlabel('Moment Value')
+    plt.ylabel('Frequency')
+    plt.legend()
+    plt.show()
+    
+    dist_var = np.var(moments)
     return dist_var
     
     
