@@ -206,8 +206,11 @@ def evenBinom(n, p):
     Returns:
     - prob: The output probability.
     """
-    pass
-    #return prob
+    # Create an array of even numbers from 0 to n
+    k_values = np.arange(0, n + 1, 2)
+    # Sum the PMF for all even k
+    prob = stats.binom.pmf(k_values, n, p).sum()
+    return prob
 
 def evenBinomFormula(n, p):
     """
@@ -220,8 +223,39 @@ def evenBinomFormula(n, p):
     Returns:
     - prob: The output probability.
     """
-    pass
-    # return prob
+    prob = 0.5 * (1 + (1 - 2 * p) ** n)
+    
+    proof = """
+    PROOF: P(X is even) = (1 + (1-2p)^n) / 2
+    
+    Step 1: Start with the Binomial Theorem
+    For X ~ Binom(n, p), let q = 1-p. We know:
+        sum(k=0 to n) of: C(n,k) * p^k * q^(n-k) = (p + q)^n = 1   ...(Equation 1)
+    
+    Step 2:  Trick - Replace p with -p
+        sum(k=0 to n) of: C(n,k) * (-p)^k * q^(n-k) = (q - p)^n = (1-2p)^n   ...(Equation 2)
+    
+    Since (-p)^k = (-1)^k * p^k, we can rewrite Equation 2 as:
+        sum(k=0 to n) of: C(n,k) * (-1)^k * p^k * q^(n-k) = (1-2p)^n
+    
+    Step 3: Add Equations 1 and 2
+        sum(k=0 to n) of: C(n,k) * p^k * q^(n-k) * [1 + (-1)^k] = 1 + (1-2p)^n
+    
+    Step 4: The Magic of [1 + (-1)^k]
+        - When k is EVEN: (-1)^k = 1, so [1 + (-1)^k] = 2
+        - When k is ODD:  (-1)^k = -1, so [1 + (-1)^k] = 0
+    
+    Therefore, odd terms vanish and even terms are doubled:
+        2 * sum(k even) of: C(n,k) * p^k * q^(n-k) = 1 + (1-2p)^n
+        2 * P(X is even) = 1 + (1-2p)^n
+    
+    Step 5: Final Result
+        P(X is even) = (1 + (1-2p)^n) / 2
+    
+    Notation: C(n,k) = binomial coefficient = "n choose k"
+    """
+    print(proof)
+    return prob
 
 ### Question 5 ###
 
@@ -237,6 +271,53 @@ def three_RV(values, joint_probs):
     Returns:
     - v: The variance of X + Y + Z. (you cannot create the RV U = X + Y + Z) 
     """
+    # Collect all values and probabilities from the multidimensional arrays
+    all_vals = []
+    all_probs = []
+    for idx in np.ndindex(values.shape):
+        all_vals.append(values[idx])
+        all_probs.append(joint_probs[idx])
+    
+    # Extract unique values for each RV
+    x_vals = np.unique([val[0] for val in all_vals])
+    y_vals = np.unique([val[1] for val in all_vals])
+    z_vals = np.unique([val[2] for val in all_vals])
+    
+    # Calculate marginal probabilities 
+    # P(X=x) = sum over all y,z of P(X=x, Y=y, Z=z)
+    p_x = np.array([sum(prob for val, prob in zip(all_vals, all_probs) if val[0] == x) for x in x_vals])
+    p_y = np.array([sum(prob for val, prob in zip(all_vals, all_probs) if val[1] == y) for y in y_vals])
+    p_z = np.array([sum(prob for val, prob in zip(all_vals, all_probs) if val[2] == z) for z in z_vals])
+    
+    # Calculate E[X], E[Y], E[Z]
+    E_X = np.sum(x_vals * p_x)
+    E_Y = np.sum(y_vals * p_y)
+    E_Z = np.sum(z_vals * p_z)
+    
+    # Calculate E[X^2], E[Y^2], E[Z^2]
+    E_X2 = np.sum(x_vals**2 * p_x)
+    E_Y2 = np.sum(y_vals**2 * p_y)
+    E_Z2 = np.sum(z_vals**2 * p_z)
+    
+    # Calculate Var(X), Var(Y), Var(Z)
+    Var_X = E_X2 - E_X**2
+    Var_Y = E_Y2 - E_Y**2
+    Var_Z = E_Z2 - E_Z**2
+    
+    # Calculate E[XY], E[XZ], E[YZ] from joint distribution
+    E_XY = sum(val[0] * val[1] * prob for val, prob in zip(all_vals, all_probs))
+    E_XZ = sum(val[0] * val[2] * prob for val, prob in zip(all_vals, all_probs))
+    E_YZ = sum(val[1] * val[2] * prob for val, prob in zip(all_vals, all_probs))
+    
+    # Calculate covariances
+    Cov_XY = E_XY - E_X * E_Y
+    Cov_XZ = E_XZ - E_X * E_Z
+    Cov_YZ = E_YZ - E_Y * E_Z
+    
+    # We saw the formula in class
+    # Var(X + Y + Z) = Var(X) + Var(Y) + Var(Z) + 2*Cov(X,Y) + 2*Cov(X,Z) + 2*Cov(Y,Z)
+
+    v = Var_X + Var_Y + Var_Z + 2*Cov_XY + 2*Cov_XZ + 2*Cov_YZ
     
     return v
 
@@ -252,10 +333,47 @@ def three_RV_pairwise_independent(values, joint_probs):
     Returns:
     - v: The variance of X + Y + Z. (you cannot create the RV U = X + Y + Z)
     """
+    # For pairwise independent RVs: Cov(X,Y) = Cov(X,Z) = Cov(Y,Z) = 0
+    # Therefore: Var(X + Y + Z) = Var(X) + Var(Y) + Var(Z)
+    
+    # Collect all values and probabilities from the multidimensional arrays
+    all_vals = []
+    all_probs = []
+    for idx in np.ndindex(values.shape):
+        all_vals.append(values[idx])
+        all_probs.append(joint_probs[idx])
+    
+    # Extract unique values for each RV
+    x_vals = np.unique([val[0] for val in all_vals])
+    y_vals = np.unique([val[1] for val in all_vals])
+    z_vals = np.unique([val[2] for val in all_vals])
+    
+    # Calculate marginal probabilities
+    p_x = np.array([sum(prob for val, prob in zip(all_vals, all_probs) if val[0] == x) for x in x_vals])
+    p_y = np.array([sum(prob for val, prob in zip(all_vals, all_probs) if val[1] == y) for y in y_vals])
+    p_z = np.array([sum(prob for val, prob in zip(all_vals, all_probs) if val[2] == z) for z in z_vals])
+    
+    # Calculate E[X], E[Y], E[Z]
+    E_X = np.sum(x_vals * p_x)
+    E_Y = np.sum(y_vals * p_y)
+    E_Z = np.sum(z_vals * p_z)
+    
+    # Calculate E[X^2], E[Y^2], E[Z^2]
+    E_X2 = np.sum(x_vals**2 * p_x)
+    E_Y2 = np.sum(y_vals**2 * p_y)
+    E_Z2 = np.sum(z_vals**2 * p_z)
+    
+    # Calculate Var(X), Var(Y), Var(Z)
+    Var_X = E_X2 - E_X**2
+    Var_Y = E_Y2 - E_Y**2
+    Var_Z = E_Z2 - E_Z**2
+    
+    # For pairwise independent RVs, variance of sum is sum of variances
+    v = Var_X + Var_Y + Var_Z
     
     return v
 
-def is_pairwise_collectively(X, Y, Z, joint_probs):
+def is_pairwise_collectively(values, joint_probs):
     """
 
     Input:
@@ -267,8 +385,43 @@ def is_pairwise_collectively(X, Y, Z, joint_probs):
     Returns:
     TRUE or FALSE
     """
+    # Collect all values and probabilities from the multidimensional arrays
+    # values and joint_probs have the same shape
+    all_vals = []
+    all_probs = []
+    for idx in np.ndindex(joint_probs.shape):  # Use joint_probs.shape
+        all_vals.append(values[idx])
+        all_probs.append(joint_probs[idx])
     
-    pass
+    # Extract unique values for each RV
+    x_vals = np.unique([val[0] for val in all_vals])
+    y_vals = np.unique([val[1] for val in all_vals])
+    z_vals = np.unique([val[2] for val in all_vals])
+    
+    # Calculate marginal probabilities
+    p_x = np.array([sum(prob for val, prob in zip(all_vals, all_probs) if val[0] == x) for x in x_vals])
+    p_y = np.array([sum(prob for val, prob in zip(all_vals, all_probs) if val[1] == y) for y in y_vals])
+    p_z = np.array([sum(prob for val, prob in zip(all_vals, all_probs) if val[2] == z) for z in z_vals])
+    
+    # Check if P(X=x, Y=y, Z=z) = P(X=x) * P(Y=y) * P(Z=z) for all combinations
+    tolerance = 1e-10
+    
+    for val, joint_prob in zip(all_vals, all_probs):
+        x, y, z = val
+        
+        # Find indices
+        x_idx = np.where(x_vals == x)[0][0]
+        y_idx = np.where(y_vals == y)[0][0]
+        z_idx = np.where(z_vals == z)[0][0]
+        
+        # Calculate product of marginals
+        product_of_marginals = p_x[x_idx] * p_y[y_idx] * p_z[z_idx]
+        
+        # Check if they're equal (within tolerance)
+        if not np.isclose(joint_prob, product_of_marginals, atol=tolerance):
+            return False
+    
+    return True
 
 
 ### Question 6 ###
